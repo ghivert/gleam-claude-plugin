@@ -1,0 +1,13 @@
+{
+  "name": "gleam",
+  "description": "A plugin to help writing Gleam code. Provides all knowledge necessary to write correct Gleam code with a coding assistant.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Guillaume Hivert",
+    "url": "https://github.com/ghivert"
+  },
+  "repository": "https://github.com/ghivert/gleam-claude-code",
+  "license": "MIT",
+  "keywords": ["gleam", "functional-programming", "erlang"],
+  "defaultEnabled": true
+}

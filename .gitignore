@@ -1,0 +1,19 @@
+# Gleam / Erlang build artifacts
+build/
+_build/
+*.beam
+*.ez
+
+# Dependencies
+.packages/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
