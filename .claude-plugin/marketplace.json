@@ -1,0 +1,19 @@
+{
+  "name": "chouquette-marketplace",
+  "owner": {
+    "name": "Guillaume"
+  },
+  "metadata": {
+    "description": "Personal marketplace for Chouquette Claude Code plugins"
+  },
+  "plugins": [
+    {
+      "name": "gleam",
+      "description": "Inject knowledge of Gleam language in Claude Code context (syntax, conventions, OTP, Lustre, Wisp, FFI, etc.)",
+      "source": {
+        "source": "github",
+        "repo": "ghivert/gleam-claude-plugin"
+      }
+    }
+  ]
+}
