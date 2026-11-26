@@ -1,8 +1,9 @@
 ---
 name: gleam-redraw
 description: >-
-  Redraw — type-safe React bindings for Gleam: components, hooks (state, effect,
-  ref, memo, context), event handling, and interop with plain React
+  Redraw — type-safe Gleam bindings to React 19 (hooks-based, same runtime and
+  behaviour as React): components, hooks (state, effect, ref, memo, context),
+  event handling, and interop with plain React
 user-invocable: false
 ---
 
@@ -11,6 +12,28 @@ user-invocable: false
 Redraw provides type-safe React bindings for Gleam. It maps React's component
 model to Gleam's functional paradigm. Requires `redraw` and `redraw_dom`
 packages (and optionally `redraw_batteries`).
+
+## Redraw is React
+
+- **Redraw is a binding to React, not a new framework.** It runs on the real
+  React runtime (`react` + `react-dom` from npm, React 19 — the Redraw version
+  number follows the React major). Every `use_*` function is a direct
+  `@external` to the matching React hook (`use_state` → `useState`,
+  `use_effect` → `useEffect`, …).
+- **It behaves exactly like React.** Rendering, re-renders on state change,
+  reconciliation, keys, effects and their cleanup timing, StrictMode double
+  invocation, Suspense, transitions, context: all React semantics apply
+  unchanged. React knowledge transfers 1:1, and the React docs
+  (https://react.dev) are the reference for behaviour.
+- **It is hooks-based React.** Components are function components only (no
+  class components, no lifecycle methods): state and side effects are handled
+  with hooks (`use_state`, `use_reducer`, `use_effect`, `use_ref`,
+  `use_memo`, `use_context`, …). React's rules of hooks apply: call them
+  unconditionally, at the top level of a component render or a custom hook.
+  A custom hook is just a Gleam function that calls other `use_*` functions.
+- **It is not Lustre.** There is no Model/Update/View loop and no `Effect`
+  type: state lives in components via hooks, as in any React app. Existing
+  React components can be wrapped and reused.
 
 ## Core concepts
 
@@ -29,8 +52,10 @@ gleam add redraw redraw_dom redraw_batteries
 Bootstrap flow — components must be composed before they can be used:
 
 ```gleam
+import gleam/int
 import redraw
 import redraw/dom/client
+import redraw/dom/events
 import redraw/dom/html as h
 
 pub fn main() {
@@ -63,8 +88,8 @@ pub type ReactComponent(props)
 pub type Context(a)
 pub type Suspense { Suspense(fallback: Element) }
 pub type Error {
-  ExistingContext(name: String)
-  UnknownContext(name: String)
+  ExistingContext(name: String)   // deprecated (named contexts removed)
+  UnknownContext(name: String)    // deprecated (named contexts removed)
   DevelopmentOnly
   OwnerStackUnavailable
 }
@@ -82,7 +107,7 @@ pub fn compose(component: ReactComponent(props), return: fn(fn(props) -> Element
 // Wrap with React.memo — skips re-render when props are unchanged.
 pub fn memoize_(component: ReactComponent(props)) -> ReactComponent(props)
 
-// Standalone component with no props.
+// DEPRECATED — use component_ with Nil props instead.
 pub fn standalone(name: String, render: fn() -> Element) -> fn() -> Element
 ```
 
@@ -117,23 +142,35 @@ pub fn use_context(context: Context(a)) -> a
 pub fn provider(context: Context(a), value: a, children: List(Element)) -> Element
 ```
 
-Context is created at module level (outside components), then threaded through
-`provider`:
+Gleam constants cannot call functions, so a context **cannot** be a module-level
+`const`. Create it once during the bootstrap phase (in `main` or in the
+component constructor, before `component_`), then pass it down as an argument
+to the component constructors that need it:
 
 ```gleam
-const theme_context = redraw.create_context_(Light)
-
-fn themed_app() {
-  use _props <- redraw.component_("ThemedApp")
-  redraw.provider(theme_context, Dark, [child_component(ChildProps)])
+pub fn main() {
+  let assert Ok(root) = client.create_root("app")
+  let theme_context = redraw.create_context_(Light)
+  client.render_(root, themed_app(theme_context), fn(app) { app(Nil) })
 }
 
-fn child() {
+fn themed_app(theme_context: redraw.Context(Theme)) {
+  use child <- redraw.compose(child(theme_context))
+  use _props <- redraw.component_("ThemedApp")
+  redraw.provider(theme_context, Dark, [child(Nil)])
+}
+
+fn child(theme_context: redraw.Context(Theme)) {
   use _props <- redraw.component_("Child")
+  // `use_context` is backed by React's `use`, so it may be called conditionally.
   let theme = redraw.use_context(theme_context)
   // use theme...
 }
 ```
+
+Named contexts (`create_context(name, ...)`, `get_context(name)`, `context`)
+and the `ExistingContext` / `UnknownContext` errors are deprecated: use
+`create_context_` and pass the value around.
 
 ### Ref hooks
 
@@ -573,5 +610,6 @@ error_boundary.children(my_app())
 - **`compose` calls happen during bootstrap**, before `component_`. The
   `use x <- compose(...)` chain builds the component closure; `component_` is
   always the innermost call.
-- **`create_context_` is called at module level**, not inside components.
+- **`create_context_` is called during bootstrap** (e.g. in `main`), never as
+  a module-level `const` and never inside a component render.
 - Props can be any Gleam type: records, tuples, or `Nil`.
