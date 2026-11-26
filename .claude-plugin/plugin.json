@@ -1,7 +1,7 @@
 {
   "name": "gleam",
   "description": "A plugin to help writing Gleam code. Provides all knowledge necessary to write correct Gleam code with a coding assistant.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Guillaume Hivert",
     "url": "https://github.com/ghivert"
